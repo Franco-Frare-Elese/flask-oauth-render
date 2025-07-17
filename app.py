@@ -7,13 +7,12 @@ app = Flask(__name__)
 # === TU CONFIGURACIÓN DE CLIENTE OAUTH ===
 GOOGLE_CLIENT_CONFIG = {
     "web": {
-        "client_id": "120289757782-d16n78ceqeqdg8p6ahvnds3qek19fokn.apps.googleusercontent.com",
+        "client_id": "120289t.com",
         "project_id": "vw-analytics-access",
         "auth_uri": "https://accounts.google.com/o/oauth2/auth",
         "token_uri": "https://oauth2.googleapis.com/token",
         "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-        "client_secret": "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",
-        "redirect_uris": [
+        "client_secret": "GOCSPX-t
             "https://flask-oauth-render.onrender.com/google/callback"
         ]
     }
