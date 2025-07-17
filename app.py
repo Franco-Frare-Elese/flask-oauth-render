@@ -1,73 +1,56 @@
-from flask import Flask, request, redirect
-import requests
-import json
-import logging
+from flask import Flask, redirect, request
+from google_auth_oauthlib.flow import Flow
+import os
 
-# === CONFIGURACIÓN ===
-APP_ID = '1178461234033155'
-APP_SECRET = 'e1e9648c5cadbbeaac58845f888556b6'
-REDIRECT_URI = 'https://flask-oauth-render.onrender.com/meta/callback'
-SCOPES = 'pages_show_list,pages_read_engagement,ads_read,instagram_basic,instagram_manage_insights,business_management'
-
-# === INICIALIZACIÓN DEL SERVIDOR ===
 app = Flask(__name__)
-logging.basicConfig(level=logging.INFO)
 
-# === 1. Ruta inicial: genera link de autorización ===
-@app.route('/')
-def auth_link():
-    if APP_ID.startswith('TU_') or APP_SECRET.startswith('TU_'):
-        return "❌ ERROR: APP_ID o APP_SECRET no están configurados.", 400
+# === TU CONFIGURACIÓN DE CLIENTE OAUTH ===
+GOOGLE_CLIENT_CONFIG = {
+    "web": {
+        "client_id": "120289757782-d16n78ceqeqdg8p6ahvnds3qek19fokn.apps.googleusercontent.com",
+        "project_id": "vw-analytics-access",
+        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+        "token_uri": "https://oauth2.googleapis.com/token",
+        "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+        "client_secret": "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",
+        "redirect_uris": [
+            "https://flask-oauth-render.onrender.com/google/callback"
+        ]
+    }
+}
 
-    auth_url = (
-        f"https://www.facebook.com/v18.0/dialog/oauth?"
-        f"client_id={APP_ID}"
-        f"&redirect_uri={REDIRECT_URI}"
-        f"&scope={SCOPES}"
-        f"&response_type=code"
+SCOPES = [
+    "https://www.googleapis.com/auth/youtube.readonly",
+    "https://www.googleapis.com/auth/yt-analytics.readonly",
+    "https://www.googleapis.com/auth/analytics.readonly"
+]
+
+REDIRECT_URI = "https://flask-oauth-render.onrender.com/google/callback"
+
+# === INICIO DE LOGIN GOOGLE ===
+@app.route("/google/login")
+def login_google():
+    flow = Flow.from_client_config(
+        GOOGLE_CLIENT_CONFIG,
+        scopes=SCOPES,
+        redirect_uri=REDIRECT_URI
     )
+    auth_url, _ = flow.authorization_url(prompt="consent")
     return redirect(auth_url)
 
-# === 2. Ruta de callback que recibe el código ===
-@app.route('/meta/callback')
-def callback():
-    code = request.args.get('code')
+# === CALLBACK GOOGLE ===
+@app.route("/google/callback")
+def callback_google():
+    flow = Flow.from_client_config(
+        GOOGLE_CLIENT_CONFIG,
+        scopes=SCOPES,
+        redirect_uri=REDIRECT_URI
+    )
+    flow.fetch_token(authorization_response=request.url)
 
-    if not code:
-        return "❌ No se recibió el parámetro `code` en el callback.", 400
+    creds = flow.credentials
+    # Acá podés usar creds para acceder a APIs
+    return "✅ Autenticación Google completada"
 
-    if APP_ID.startswith('TU_') or APP_SECRET.startswith('TU_'):
-        return "❌ ERROR: APP_ID o APP_SECRET no están configurados.", 400
-
-    token_url = 'https://graph.facebook.com/v18.0/oauth/access_token'
-    params = {
-        'client_id': APP_ID,
-        'client_secret': APP_SECRET,
-        'redirect_uri': REDIRECT_URI,
-        'code': code
-    }
-
-    try:
-        response = requests.get(token_url, params=params)
-        response.raise_for_status()
-        token_data = response.json()
-
-        with open('meta_token_nuevo_app_habilitada_1.json', 'w') as f:
-            json.dump(token_data, f, indent=4)
-
-        logging.info("✅ Token obtenido y guardado.")
-        return f"✅ Token guardado correctamente:<br><pre>{json.dumps(token_data, indent=2)}</pre>"
-
-    except requests.exceptions.RequestException as e:
-        logging.error(f"❌ Error en token exchange: {e}")
-        return f"❌ Error en el intercambio de token:<br>{str(e)}", 500
-
-# === 3. Eliminar pantalla de advertencia de ngrok ===
-@app.after_request
-def skip_ngrok_warning(response):
-    response.headers["ngrok-skip-browser-warning"] = "true"
-    return response
-
-# === 4. Arranque del servidor ===
-if __name__ == '__main__':
-    app.run(port=5000)
+if __name__ == "__main__":
+    app.run(debug=True)
